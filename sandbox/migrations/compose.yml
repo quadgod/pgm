@@ -1,0 +1,12 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: sandbox-pg
+    environment:
+      POSTGRES_USER: "sandbox"
+      POSTGRES_PASSWORD: "sandbox"
+      POSTGRES_DB: "sandbox"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql
+    ports:
+      - "5432:5432"

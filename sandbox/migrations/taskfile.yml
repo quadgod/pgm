@@ -1,0 +1,35 @@
+version: "3"
+
+tasks:
+  pgstart:
+    cmds:
+      - docker compose -f ./sandbox/migrations/compose.yml up -d
+  pgstop:
+    cmds:
+      - docker compose -f ./sandbox/migrations/compose.yml down
+  create:
+    deps:
+      - task: :pgm:build
+    summary: |
+      Создает новую миграцию.
+
+      Пример вызова:
+      ```shell
+      task migsbox:create -- "название_миграции"
+      ```
+    cmds:
+      - "{{.TASKFILE_DIR}}/../../bin/pgm/pgm --command=create --migrationsDir=./sandbox/migrations --migrationName={{.CLI_ARGS}}"
+  migrate:
+    deps:
+      - task: :pgm:build
+    summary: |
+      Применяет все миграции из директории sandbox/migrations к базе данных.
+    cmds:
+      - "{{.TASKFILE_DIR}}/../../bin/pgm/pgm --command=migrate --migrationsDir={{.TASKFILE_DIR}} --migrationsTableSchema=public --migrationsTable=migrations --connectionString=postgres://sandbox:sandbox@localhost:5432/test"
+  down:
+    deps:
+      - task: :pgm:build
+    summary: |
+      Откатывает все миграции из директории sandbox/migrations к базе данных.
+    cmds:
+      - "{{.TASKFILE_DIR}}/../../bin/pgm/pgm --command=down --migrationsDir={{.TASKFILE_DIR}} --migrationsTableSchema=public --migrationsTable=migrations --connectionString=postgres://sandbox:sandbox@localhost:5432/test"

@@ -1,0 +1,5 @@
+/.idea
+/.cursor
+bin/
+coverage/
+sandbox/*/data

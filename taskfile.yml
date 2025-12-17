@@ -1,0 +1,21 @@
+version: "3"
+
+includes:
+  pgm: ./cmd/pgm/taskfile.yml
+  migsbox: ./sandbox/migrations/taskfile.yml
+
+tasks:
+  lint:
+    - go fmt ./...
+    - go vet ./...
+    - golangci-lint run -v
+  test:
+    cmds:
+      - mkdir -p coverage
+      - go test ./...
+  test:cover:
+    cmds:
+      - mkdir -p coverage
+      - go test ./... -coverprofile=coverage/coverage.out -covermode atomic
+      - go tool cover -html coverage/coverage.out -o coverage/coverage.html
+      - go tool cover -func coverage/coverage.out
