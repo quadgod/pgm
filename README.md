@@ -1,31 +1,63 @@
 # Postgres Migration Utility
 
-## Структура репозитория
+A PostgreSQL migration utility with automatic synchronization of database state and file system.
 
-- [Документация golang best practices для орагизации структуры репозитория](https://github.com/golang-standards/project-layout/blob/master/README_ru.md)
+**Read this in other languages:** [Русский](README.ru.md)
 
-## Зависимости
+## Project Purpose
 
-- brew install go (min version golang 1.25.5)
-- brew install golangci-lint
-- Управление командами https://taskfile.dev/
-  - install on macos `brew install go-task`
-  - install on windows `choco install go-task`
-  - install on linux
-    - aur `yay -S go-task`
-    - fedora `sudo dnf install go-task`
+This migrator solves the problem of synchronization between database state on dev environments and migrations in the repository. When multiple developers work on a project simultaneously and apply migrations to shared dev environments, conflicts and desynchronization often occur.
 
-## Состав репоизитория
+### Key Feature
 
-- [pgm](./cmd/pgm/README.md) - утилита для миграции postgres
+The utility can:
+- **Compare** database state with migrations in the file system
+- **Automatically rollback** database changes until it fully matches the state of migrations in the folder
+- **Synchronize** dev environments with the current state of code in the repository
 
-## Команды
+### Problem Being Solved
 
-- `task lint` - запускает проверку кода
-- `task test` - запускает тесты
-- `task pgm:build` - собирает pgm
+On dev environments, the following situations often arise:
+- Developer A applies their migration directly to the database
+- Developer B applies a different migration to the same database
+- Migrations conflict or create incompatible changes
+- On the next deploy or code update, an error occurs because migrations are not applied in the correct order or the database state does not match the expected state
 
-## Example how to use in other project
+**Solution**: `pgm` automatically brings the database to a state that matches the migration files in the repository, rolling back extra changes and applying missing migrations in the correct order.
+
+### Benefits
+
+- ✅ Dev environments always match the code in the repository
+- ✅ No need to manually resolve migration conflicts
+- ✅ Predictable database state before each deploy
+- ✅ Simplified team workflow with shared environments
+
+## Repository Structure
+
+- [Golang best practices documentation for repository organization](https://github.com/golang-standards/project-layout)
+
+## Dependencies
+
+- `brew install go` (min version golang 1.25.5)
+- `brew install golangci-lint`
+- Command management via [Taskfile](https://taskfile.dev/):
+  - Install on macOS: `brew install go-task`
+  - Install on Windows: `choco install go-task`
+  - Install on Linux:
+    - AUR: `yay -S go-task`
+    - Fedora: `sudo dnf install go-task`
+
+## Repository Contents
+
+- [pgm](./cmd/pgm/README.md) - PostgreSQL migration utility
+
+## Commands
+
+- `task lint` - runs code linting
+- `task test` - runs tests
+- `task pgm:build` - builds pgm
+
+## Example: How to Use in Other Projects
 
 ```yml
 # https://taskfile.dev
@@ -40,7 +72,7 @@ vars:
   PGM_VER: "latest"
   PGM_BIN: "{{.BIN_DIR}}/pgm{{.EXE}}"
 
-  # где лежат миграции в проекте (поменяй под себя)
+  # Where migrations are located in your project (change to match your setup)
   MIGRATIONS_DIR: "{{.ROOT_DIR}}/migrations"
   MIGRATIONS_SCHEMA: "public"
   MIGRATIONS_TABLE: "migrations"
@@ -126,14 +158,14 @@ tasks:
           --connectionString="{{.DB_DSN}}"
 ```
 
-### Linux & MacOS example
+### Linux & macOS Example
 
 ```bash
 # bash
 DB_DSN='postgres://u:p@host:5432/db' task migrate:up
 ```
 
-### Windows example
+### Windows Example
 
 ```powershell
 # powershell
