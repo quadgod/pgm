@@ -92,10 +92,10 @@ jobs:
     - name: Generate test coverage
       run: |
         mkdir -p coverage
-        go test ./... -coverprofile=coverage/coverage.out -covermode=atomic -v
-        go tool cover -func coverage/coverage.out
+        go test ./... -coverprofile=coverage/coverage.txt -covermode=atomic -v
+        go tool cover -func coverage/coverage.txt
         # Extract total coverage percentage
-        COVERAGE=$(go tool cover -func coverage/coverage.out | grep total | awk '{print $3}')
+        COVERAGE=$(go tool cover -func coverage/coverage.txt | grep total | awk '{print $3}')
         COVERAGE_NUM=$(echo $COVERAGE | sed 's/%//')
         COVERAGE_INT=${COVERAGE_NUM%.*}
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
@@ -103,15 +103,10 @@ jobs:
         echo "Total coverage: $COVERAGE"
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
-        file: ./coverage/coverage.out
+        file: ./coverage/coverage.txt
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-
-    - name: Upload coverage to artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage/
+        token: ${{ secrets.CODECOV_TOKEN }}
