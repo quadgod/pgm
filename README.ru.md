@@ -2,6 +2,9 @@
 
 Утилита для управления миграциями PostgreSQL с автоматической синхронизацией состояния базы данных и файловой системы.
 
+![Tests](https://github.com/quadgod/pgm/workflows/CI/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-check%20CI-blue)
+
 **Read this in other languages:** [English](README.md)
 
 ## Назначение проекта

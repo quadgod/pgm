@@ -2,6 +2,9 @@
 
 A PostgreSQL migration utility with automatic synchronization of database state and file system.
 
+![Tests](https://github.com/quadgod/pgm/workflows/CI/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-check%20CI-blue)
+
 **Read this in other languages:** [Русский](README.ru.md)
 
 ## Project Purpose

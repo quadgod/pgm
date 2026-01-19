@@ -7,7 +7,55 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  lint-and-test:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.5'
+    
+    - name: Add GOPATH/bin to PATH
+      run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run go fmt
+      run: |
+        go fmt ./...
+        if [ -n "$(git diff --name-only)" ]; then
+          echo "Code is not formatted. Please run 'go fmt ./...'"
+          git diff
+          exit 1
+        fi
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Install golangci-lint
+      run: |
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        golangci-lint --version
+
+    - name: Run golangci-lint
+      run: golangci-lint run --verbose --timeout=5m
+
+  test:
     runs-on: ubuntu-latest
     
     steps:
@@ -32,31 +80,20 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
-    - name: Run go fmt
-      run: go fmt ./...
-
-    - name: Run go vet
-      run: go vet ./...
-
-    - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v4
-      with:
-        version: latest
-
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v4
-      with:
-        args: --verbose
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      # Required for testcontainers which needs Docker
 
     - name: Run tests
       run: go test ./... -v
 
-    - name: Check test coverage
+    - name: Generate test coverage
       run: |
         mkdir -p coverage
         go test ./... -coverprofile=coverage/coverage.out -covermode=atomic -v
         go tool cover -func coverage/coverage.out
+
+    - name: Upload coverage to artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage/
