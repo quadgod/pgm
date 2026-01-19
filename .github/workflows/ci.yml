@@ -83,6 +83,9 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    - name: Install bc
+      run: sudo apt-get update && sudo apt-get install -y bc
+
     - name: Run tests
       run: go test ./... -v
 
@@ -91,6 +94,13 @@ jobs:
         mkdir -p coverage
         go test ./... -coverprofile=coverage/coverage.out -covermode=atomic -v
         go tool cover -func coverage/coverage.out
+        # Extract total coverage percentage
+        COVERAGE=$(go tool cover -func coverage/coverage.out | grep total | awk '{print $3}')
+        COVERAGE_NUM=$(echo $COVERAGE | sed 's/%//')
+        COVERAGE_INT=${COVERAGE_NUM%.*}
+        echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+        echo "COVERAGE_INT=$COVERAGE_INT" >> $GITHUB_ENV
+        echo "Total coverage: $COVERAGE"
 
     - name: Upload coverage to artifacts
       uses: actions/upload-artifact@v4
