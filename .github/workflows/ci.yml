@@ -102,6 +102,14 @@ jobs:
         echo "COVERAGE_INT=$COVERAGE_INT" >> $GITHUB_ENV
         echo "Total coverage: $COVERAGE"
 
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
     - name: Upload coverage to artifacts
       uses: actions/upload-artifact@v4
       with:

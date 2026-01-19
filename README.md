@@ -3,7 +3,7 @@
 A PostgreSQL migration utility with automatic synchronization of database state and file system.
 
 ![Tests](https://github.com/quadgod/pgm/workflows/CI/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-check%20CI-blue)
+[![codecov](https://codecov.io/gh/quadgod/pgm/branch/main/graph/badge.svg)](https://codecov.io/gh/quadgod/pgm)
 
 **Read this in other languages:** [Русский](README.ru.md)
 
@@ -15,8 +15,15 @@ This migrator solves the problem of synchronization between database state on de
 
 The utility can:
 - **Compare** database state with migrations in the file system
-- **Automatically rollback** database changes until it fully matches the state of migrations in the folder
+- **Automatically rollback** database changes until it fully matches the state of migrations in the folder (when using `--priority=fs`)
 - **Synchronize** dev environments with the current state of code in the repository
+- **Safely apply** only new migrations in production (when using `--priority=db`)
+
+The behavior is controlled by the `--priority` parameter:
+- `--priority=fs`: Development mode - automatically synchronizes database with file system (can rollback migrations)
+- `--priority=db`: Production mode - safely applies only missing migrations, fails on conflicts
+
+See the [Running the Migrator](#running-the-migrator) section for detailed documentation.
 
 ### Problem Being Solved
 
@@ -59,6 +66,131 @@ On dev environments, the following situations often arise:
 - `task lint` - runs code linting
 - `task test` - runs tests
 - `task pgm:build` - builds pgm
+
+## Running the Migrator
+
+The `pgm` utility provides a command-line interface for managing PostgreSQL migrations. Below is a detailed description of how to use it and its parameters.
+
+### Installation
+
+Install `pgm` using Go:
+
+```bash
+go install github.com/quadgod/pgm/cmd/pgm@latest
+```
+
+### CLI Parameters
+
+The migrator accepts the following command-line parameters:
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `--command` | Yes | - | Command to execute: `create`, `migrate`, or `down` |
+| `--migrationsDir` | Yes | - | Path to the directory containing migration files |
+| `--migrationName` | For `create` | - | Name of the migration (alphanumeric and `_` only) |
+| `--migrationsTableSchema` | For `migrate`/`down` | - | Schema name for the migrations table |
+| `--migrationsTable` | For `migrate`/`down` | `migrations` | Name of the migrations table |
+| `--connectionString` | For `migrate`/`down` | `PG_CONNECTION_STRING` env var | PostgreSQL connection string |
+| `--priority` | No | `fs` | Priority mode: `fs` (file system) or `db` (database) |
+
+### Commands
+
+#### Create Migration
+
+Creates a new migration file pair (`{timestamp}_{name}.up.sql` and `{timestamp}_{name}.down.sql`):
+
+```bash
+pgm \
+  --command=create \
+  --migrationsDir=./migrations \
+  --migrationName=add_users_table
+```
+
+#### Migrate (Apply Migrations)
+
+Applies migrations to the database. Behavior depends on the `--priority` parameter (see below).
+
+```bash
+pgm \
+  --command=migrate \
+  --migrationsDir=./migrations \
+  --migrationsTableSchema=public \
+  --migrationsTable=migrations \
+  --connectionString="postgres://user:password@localhost:5432/dbname" \
+  --priority=fs
+```
+
+#### Down (Revert Migration)
+
+Reverts the last applied migration:
+
+```bash
+pgm \
+  --command=down \
+  --migrationsDir=./migrations \
+  --migrationsTableSchema=public \
+  --migrationsTable=migrations \
+  --connectionString="postgres://user:password@localhost:5432/dbname" \
+  --priority=fs
+```
+
+### Priority Parameter: Key Feature
+
+The `--priority` parameter is a **critical feature** that determines how the migrator handles conflicts between the database state and migration files. This parameter has two modes:
+
+#### `--priority=fs` (File System Priority) - Development Mode
+
+**Use this mode for development environments.**
+
+When `priority=fs` is set, the migrator:
+- **Prioritizes migration files** in the file system over the database state
+- **Automatically rolls back** migrations that exist in the database but don't match the file system
+- **Synchronizes** the database to match the exact state of migration files in the repository
+- **Applies missing migrations** from the file system after rollback
+
+**Behavior:**
+1. Compares migrations in the database with migration files
+2. If a mismatch is found, automatically reverts all conflicting migrations from the database
+3. Applies migrations from the file system to bring the database to the expected state
+
+**Example scenario:**
+- Database has migrations: `001_init`, `002_add_users`, `003_add_posts`
+- File system has migrations: `001_init`, `002_add_users`
+- Result: Migration `003_add_posts` is automatically reverted, database matches file system
+
+**⚠️ Warning:** This mode can cause data loss if migrations are reverted. Use only in development environments.
+
+#### `--priority=db` (Database Priority) - Production Mode
+
+**Use this mode for production environments.**
+
+When `priority=db` is set, the migrator:
+- **Prioritizes the database state** over migration files
+- **Only applies missing migrations** that exist in the file system but not in the database
+- **Returns an error** if migrations in the database don't match the file system
+- **Never automatically rolls back** migrations
+
+**Behavior:**
+1. Compares migrations in the database with migration files
+2. Applies only migrations that are missing from the database
+3. If a mismatch is found (different migration name at the same position), returns an error and stops
+
+**Example scenario:**
+- Database has migrations: `001_init`, `002_add_users`
+- File system has migrations: `001_init`, `002_add_users`, `003_add_posts`
+- Result: Migration `003_add_posts` is applied
+- If database had `002_different_migration` instead of `002_add_users`, an error would be returned
+
+**✅ Safe for production:** This mode never modifies existing migrations and only adds new ones.
+
+### Summary: When to Use Which Priority
+
+| Environment | Priority | Reason |
+|-------------|----------|--------|
+| Development/Staging | `fs` | Allows automatic synchronization and rollback for testing |
+| Production | `db` | Safe mode that only applies new migrations, prevents accidental rollbacks |
+| CI/CD pipelines | `db` | Predictable behavior, fails fast on conflicts |
+| Local development | `fs` | Convenient synchronization with repository state |
 
 ## Example: How to Use in Other Projects
 
@@ -137,7 +269,7 @@ tasks:
       - cmd: '"{{.PGM_BIN}}" --command=create --migrationsDir="{{.MIGRATIONS_DIR}}" --migrationName="{{.MIGRATION_NAME}}"'
 
   migrate:up:
-    desc: "Run migrations up"
+    desc: "Run migrations up (dev mode: priority=fs)"
     deps: [tools:pgm]
     cmds:
       - cmd: >
@@ -147,6 +279,20 @@ tasks:
           --migrationsTableSchema="{{.MIGRATIONS_SCHEMA}}"
           --migrationsTable="{{.MIGRATIONS_TABLE}}"
           --connectionString="{{.DB_DSN}}"
+          --priority=fs
+
+  migrate:up:prod:
+    desc: "Run migrations up (production mode: priority=db)"
+    deps: [tools:pgm]
+    cmds:
+      - cmd: >
+          "{{.PGM_BIN}}"
+          --command=migrate
+          --migrationsDir="{{.MIGRATIONS_DIR}}"
+          --migrationsTableSchema="{{.MIGRATIONS_SCHEMA}}"
+          --migrationsTable="{{.MIGRATIONS_TABLE}}"
+          --connectionString="{{.DB_DSN}}"
+          --priority=db
 
   migrate:down:
     desc: "Run migration down"
@@ -159,6 +305,7 @@ tasks:
           --migrationsTableSchema="{{.MIGRATIONS_SCHEMA}}"
           --migrationsTable="{{.MIGRATIONS_TABLE}}"
           --connectionString="{{.DB_DSN}}"
+          --priority=fs
 ```
 
 ### Linux & macOS Example
