@@ -67,6 +67,89 @@ On dev environments, the following situations often arise:
 - `task test` - runs tests
 - `task pgm:build` - builds pgm
 
+## Working with Taskfile
+
+The project uses [Taskfile](https://taskfile.dev/) for command management. The root `taskfile.yml` includes nested taskfiles from other project directories via the `includes` mechanism.
+
+### Taskfile Structure in the Project
+
+- **Root** `taskfile.yml` - main project commands (lint, test)
+- **`cmd/pgm/taskfile.yml`** - commands for building pgm (prefix: `pgm:`)
+- **`sandbox/migrations/taskfile.yml`** - commands for working with sandbox migrations (prefix: `migsbox:`)
+
+### Running Commands from Nested Taskfiles
+
+When you're in the project root directory, you can run commands from nested taskfiles using prefixes defined in the root taskfile's `includes` section:
+
+#### Commands for building pgm
+
+```bash
+# From project root
+task pgm:build          # Builds pgm for all platforms
+```
+
+#### Commands for sandbox migrations
+
+```bash
+# From project root
+task migsbox:pgstart    # Starts PostgreSQL in Docker for sandbox
+task migsbox:pgstop     # Stops PostgreSQL in Docker
+task migsbox:create -- "migration_name"  # Creates a new migration
+task migsbox:migrate    # Applies all migrations
+task migsbox:down       # Rolls back the last migration
+```
+
+#### Running commands from current directory
+
+If you're inside a directory with a taskfile (e.g., in `sandbox/migrations/`), you can run commands without the prefix:
+
+```bash
+# When inside sandbox/migrations/
+cd sandbox/migrations/
+task create -- "migration_name"  # Creates a migration
+task migrate                      # Applies migrations
+task down                         # Rolls back migration
+task pgstart                      # Starts PostgreSQL
+```
+
+#### Referencing root taskfile commands
+
+If a nested taskfile needs to call a command from the root taskfile, use the `:` prefix (colon at the beginning):
+
+```yaml
+# In sandbox/migrations/taskfile.yml
+deps:
+  - task: :pgm:build  # Calls task pgm:build from root taskfile
+```
+
+### Available Commands List
+
+**Root commands:**
+- `task lint` - code linting
+- `task test` - run tests
+- `task test:cover` - run tests with coverage
+
+**Build commands (prefix `pgm:`):**
+- `task pgm:build` - build pgm for all platforms
+
+**Sandbox commands (prefix `migsbox:`):**
+- `task migsbox:pgstart` - start PostgreSQL in Docker
+- `task migsbox:pgstop` - stop PostgreSQL in Docker
+- `task migsbox:create -- "name"` - create a new migration
+- `task migsbox:migrate` - apply all migrations
+- `task migsbox:down` - roll back the last migration
+
+### Additional Information
+
+To view all available commands, use:
+
+```bash
+task --list        # Shows all root taskfile commands
+task --list-all    # Shows all commands including nested ones
+```
+
+For more information about Taskfile: https://taskfile.dev/
+
 ## Running the Migrator
 
 The `pgm` utility provides a command-line interface for managing PostgreSQL migrations. Below is a detailed description of how to use it and its parameters.

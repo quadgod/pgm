@@ -67,6 +67,89 @@
 - `task test` - запускает тесты
 - `task pgm:build` - собирает pgm
 
+## Работа с Taskfile
+
+Проект использует [Taskfile](https://taskfile.dev/) для управления командами. Корневой `taskfile.yml` включает вложенные taskfile'ы из других директорий проекта через механизм `includes`.
+
+### Структура Taskfile в проекте
+
+- **Корневой** `taskfile.yml` - основные команды проекта (lint, test)
+- **`cmd/pgm/taskfile.yml`** - команды для сборки pgm (префикс: `pgm:`)
+- **`sandbox/migrations/taskfile.yml`** - команды для работы с sandbox миграциями (префикс: `migsbox:`)
+
+### Запуск команд из вложенных Taskfile
+
+Когда вы находитесь в корневой папке проекта, вы можете запускать команды из вложенных taskfile'ов используя префиксы, определенные в секции `includes` корневого taskfile:
+
+#### Команды для сборки pgm
+
+```bash
+# Из корня проекта
+task pgm:build          # Собирает pgm для всех платформ
+```
+
+#### Команды для sandbox миграций
+
+```bash
+# Из корня проекта
+task migsbox:pgstart    # Запускает PostgreSQL в Docker для sandbox
+task migsbox:pgstop     # Останавливает PostgreSQL в Docker
+task migsbox:create -- "название_миграции"  # Создает новую миграцию
+task migsbox:migrate    # Применяет все миграции
+task migsbox:down       # Откатывает последнюю миграцию
+```
+
+#### Запуск команд из текущей директории
+
+Если вы находитесь внутри директории с taskfile (например, в `sandbox/migrations/`), вы можете запускать команды без префикса:
+
+```bash
+# Находясь в sandbox/migrations/
+cd sandbox/migrations/
+task create -- "название_миграции"  # Создает миграцию
+task migrate                         # Применяет миграции
+task down                            # Откатывает миграцию
+task pgstart                         # Запускает PostgreSQL
+```
+
+#### Ссылки на команды корневого taskfile
+
+Если внутри вложенного taskfile нужно вызвать команду из корневого, используется префикс `:` (двоеточие в начале):
+
+```yaml
+# В sandbox/migrations/taskfile.yml
+deps:
+  - task: :pgm:build  # Вызывает task pgm:build из корневого taskfile
+```
+
+### Список доступных команд
+
+**Корневые команды:**
+- `task lint` - проверка кода
+- `task test` - запуск тестов
+- `task test:cover` - запуск тестов с покрытием
+
+**Команды сборки (префикс `pgm:`):**
+- `task pgm:build` - сборка pgm для всех платформ
+
+**Команды sandbox (префикс `migsbox:`):**
+- `task migsbox:pgstart` - запуск PostgreSQL в Docker
+- `task migsbox:pgstop` - остановка PostgreSQL в Docker
+- `task migsbox:create -- "название"` - создание новой миграции
+- `task migsbox:migrate` - применение всех миграций
+- `task migsbox:down` - откат последней миграции
+
+### Дополнительная информация
+
+Для просмотра всех доступных команд используйте:
+
+```bash
+task --list        # Показывает все команды корневого taskfile
+task --list-all    # Показывает все команды, включая вложенные
+```
+
+Подробнее о Taskfile: https://taskfile.dev/
+
 ## Запуск мигратора
 
 Утилита `pgm` предоставляет интерфейс командной строки для управления миграциями PostgreSQL. Ниже приведено подробное описание использования и параметров.
