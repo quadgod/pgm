@@ -107,9 +107,9 @@ task migsbox:down       # Откатывает последнюю миграци
 # Находясь в sandbox/migrations/
 cd sandbox/migrations/
 task create -- "название_миграции"  # Создает миграцию
-task migrate                         # Применяет миграции
-task down                            # Откатывает миграцию
-task pgstart                         # Запускает PostgreSQL
+task migrate                        # Применяет миграции
+task down                           # Откатывает миграцию
+task pgstart                        # Запускает PostgreSQL
 ```
 
 #### Ссылки на команды корневого taskfile

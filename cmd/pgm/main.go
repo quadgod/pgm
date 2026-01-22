@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/quadgod/pgm/pkg/pgm"
@@ -14,6 +15,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	flags := new(pgm.Flags)
 
+	showVersion := flag.Bool("version", false, "show version and exit")
 	flag.StringVar(&flags.Command, "command", "", "command")
 	flag.StringVar(&flags.MigrationsDir, "migrationsDir", "", "path to migrations directory")
 	flag.StringVar(&flags.MigrationsTable, "migrationsTable", "migrations", "name of migrations table")
@@ -23,6 +25,12 @@ func main() {
 	flag.StringVar(&flags.Priority, "priority", string(pgm.FS), "db or fs migrations priority")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("pgm v%s\n", pgm.Version)
+		os.Exit(0)
+		return
+	}
 
 	if err := flags.Validate(); err != nil {
 		logger.Error("arguments validation error", "error", err)
