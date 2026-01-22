@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    tags:
+      - "v*"        # Also trigger on version tags
   pull_request:
     branches: [main, develop]
 
@@ -99,4 +101,128 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  release:
+    needs: [lint, test]  # Ensure release only runs after lint and test pass
+    if: startsWith(github.ref, 'refs/tags/v')  # Only run on tag pushes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache: true
+
+      - name: Get tag
+        id: tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        id: build
+        run: |
+          # Define the platforms to build for
+          PLATFORMS=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+            "windows/arm64"
+          )
+
+          BINARY_NAME="pgm"
+          VERSION=${{ steps.tag.outputs.tag }}
+
+          # Create dist directory
+          mkdir -p dist
+
+          # Build for each platform
+          for platform in "${PLATFORMS[@]}"; do
+            GOOS=$(echo $platform | cut -d'/' -f1)
+            GOARCH=$(echo $platform | cut -d'/' -f2)
+
+            echo "Building for $GOOS/$GOARCH..."
+
+            # Set binary name with extension for Windows
+            if [ "$GOOS" = "windows" ]; then
+              BIN_NAME="${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}.exe"
+            else
+              BIN_NAME="${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}"
+            fi
+
+            # Build the binary
+            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build \
+              -ldflags="-s -w -X github.com/quadgod/pgm/pkg/pgm.Version=${VERSION}" \
+              -o "dist/$BIN_NAME" ./cmd/pgm
+
+            # Create archive
+            if [ "$GOOS" = "windows" ]; then
+              zip "dist/${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}.zip" "dist/$BIN_NAME"
+              rm "dist/$BIN_NAME"
+            else
+              tar -czf "dist/${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}.tar.gz" -C dist "$BIN_NAME"
+              rm "dist/$BIN_NAME"
+            fi
+          done
+
+          # Calculate checksums
+          cd dist
+          sha256sum * > ../SHA256SUMS
+          cd ..
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: PostgreSQL Migration Tool ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Changes
+
+            <!-- Add release notes here -->
+
+            ## Checksums
+            ```
+            $(cat SHA256SUMS)
+            ```
+
+            ## Installation
+
+            ### Using curl (Linux/macOS)
+            ```bash
+            # Download and extract the binary for your OS
+            # For example, for Linux AMD64:
+            curl -L https://github.com/quadgod/pgm/releases/download/${{ steps.tag.outputs.tag }}/pgm_${{ steps.tag.outputs.tag }}_linux_amd64.tar.gz -o pgm.tar.gz
+            tar -xzf pgm.tar.gz
+            chmod +x pgm
+            # Move to a directory in your PATH
+            sudo mv pgm /usr/local/bin/pgm
+            ```
+
+            ### Using curl (Windows)
+            ```powershell
+            # Download and extract the binary for Windows AMD64
+            Invoke-WebRequest -Uri "https://github.com/quadgod/pgm/releases/download/${{ steps.tag.outputs.tag }}/pgm_${{ steps.tag.outputs.tag }}_windows_amd64.zip" -OutFile "pgm.zip"
+            Expand-Archive -Path "pgm.zip" -DestinationPath "."
+            # Add pgm.exe to your PATH or move it to a directory in your PATH
+            ```
+
+            ### From source
+            ```bash
+            go install github.com/quadgod/pgm/cmd/pgm@${{ steps.tag.outputs.tag }}
+            ```
+          files: |
+            dist/*
+            SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
