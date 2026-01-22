@@ -7,6 +7,31 @@ A PostgreSQL migration utility with automatic synchronization of database state 
 
 **Read this in other languages:** [Русский](README.ru.md)
 
+## Installation
+
+### Pre-built Binaries (Recommended)
+
+Download the latest binary for your operating system from the [releases page](https://github.com/quadgod/pgm/releases). Choose the appropriate archive for your platform:
+
+- **Linux x86_64**: `pgm_vX.X.X_linux_amd64.tar.gz`
+- **Linux ARM64**: `pgm_vX.X.X_linux_arm64.tar.gz`
+- **macOS x86_64**: `pgm_vX.X.X_darwin_amd64.tar.gz`
+- **macOS ARM64**: `pgm_vX.X.X_darwin_arm64.tar.gz`
+- **Windows x86_64**: `pgm_vX.X.X_windows_amd64.zip`
+- **Windows ARM64**: `pgm_vX.X.X_windows_arm64.zip`
+
+Extract the archive and place the binary in your PATH.
+
+### From Source
+
+```bash
+go install github.com/quadgod/pgm/cmd/pgm@latest
+```
+
+### Using a Package Manager
+
+Currently not available through package managers, but you can build from source.
+
 ## Project Purpose
 
 This migrator solves the problem of synchronization between database state on dev environments and migrations in the repository. When multiple developers work on a project simultaneously and apply migrations to shared dev environments, conflicts and desynchronization often occur.
