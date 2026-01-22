@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Git pre-commit hook для автоматического обновления версии
+# Этот хук проверяет есть ли новый тег и обновляет версию в pkg/pgm/version.go
+
+VERSION_FILE="pkg/pgm/version.go"
+
+# Получаем последний тег
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+# Если есть последний тег, обновляем версию
+if [ -n "$LAST_TAG" ]; then
+  # Извлекаем версию (удаляем 'v' если есть)
+  VERSION=${LAST_TAG#v}
+  
+  # Обновляем версию в файле
+  sed -i.tmp "s/^const Version = \".*\"/const Version = \"$VERSION\"/" "$VERSION_FILE"
+  rm -f "${VERSION_FILE}.tmp"
+  
+  # Добавляем файл в индекс
+  git add "$VERSION_FILE"
+  
+  echo "Обновлена версия до: $VERSION"
+fi

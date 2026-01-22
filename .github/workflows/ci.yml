@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop]
     tags:
-      - "v*"        # Also trigger on version tags
+      - "v*" # Also trigger on version tags
   pull_request:
     branches: [main, develop]
 
@@ -106,8 +106,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   release:
-    needs: [lint, test]  # Ensure release only runs after lint and test pass
-    if: startsWith(github.ref, 'refs/tags/v')  # Only run on tag pushes
+    needs: [lint, test] # Ensure release only runs after lint and test pass
+    if: startsWith(github.ref, 'refs/tags/v') # Only run on tag pushes
     runs-on: ubuntu-latest
 
     steps:
@@ -185,7 +185,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: PostgreSQL Migration Tool ${{ steps.tag.outputs.tag }}
+          name: pgm ${{ steps.tag.outputs.tag }}
           draft: false
           prerelease: false
           body: |
@@ -228,4 +228,3 @@ jobs:
             SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

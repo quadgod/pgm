@@ -19,3 +19,7 @@ tasks:
       - go test ./... -coverprofile=coverage/coverage.out -covermode atomic
       - go tool cover -html coverage/coverage.out -o coverage/coverage.html
       - go tool cover -func coverage/coverage.out
+  hooks:install:
+    cmds:
+      - git config core.hooksPath .githooks
+    desc: Устанавливает git hooks из директории githooks/
