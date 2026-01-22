@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # Trigger on version tags
+      - "v*" # Trigger on version tags
 
 permissions:
   contents: write # Required to create releases and upload assets
@@ -11,7 +11,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.5'
+          go-version: "1.25.5"
           cache: true
 
       - name: Get tag
@@ -29,7 +29,7 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          
+
       - name: Build binaries
         id: build
         run: |
@@ -42,32 +42,32 @@ jobs:
             "windows/amd64"
             "windows/arm64"
           )
-          
+
           BINARY_NAME="pgm"
           VERSION=${{ steps.tag.outputs.tag }}
-          
+
           # Create dist directory
           mkdir -p dist
-          
+
           # Build for each platform
           for platform in "${PLATFORMS[@]}"; do
             GOOS=$(echo $platform | cut -d'/' -f1)
             GOARCH=$(echo $platform | cut -d'/' -f2)
-            
+
             echo "Building for $GOOS/$GOARCH..."
-            
+
             # Set binary name with extension for Windows
             if [ "$GOOS" = "windows" ]; then
               BIN_NAME="${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}.exe"
             else
               BIN_NAME="${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}"
             fi
-            
+
             # Build the binary
             env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build \
               -ldflags="-s -w -X github.com/quadgod/pgm/pkg/pgm.Version=${VERSION}" \
               -o "dist/$BIN_NAME" ./cmd/pgm
-            
+
             # Create archive
             if [ "$GOOS" = "windows" ]; then
               zip "dist/${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}.zip" "dist/$BIN_NAME"
@@ -77,7 +77,7 @@ jobs:
               rm "dist/$BIN_NAME"
             fi
           done
-          
+
           # Calculate checksums
           cd dist
           sha256sum * > ../SHA256SUMS
@@ -90,21 +90,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          release_name: Release ${{ steps.tag.outputs.tag }}
+          release_name: PostgreSQL Migration Tool ${{ steps.tag.outputs.tag }}
           draft: false
           prerelease: false
           body: |
             ## Changes
-            
+
             <!-- Add release notes here -->
-            
+
             ## Checksums
             ```
             $(cat SHA256SUMS)
             ```
-            
+
             ## Installation
-            
+
             ### Using curl (Linux/macOS)
             ```bash
             # Download and extract the binary for your OS
@@ -115,7 +115,7 @@ jobs:
             # Move to a directory in your PATH
             sudo mv pgm /usr/local/bin/pgm
             ```
-            
+
             ### Using curl (Windows)
             ```powershell
             # Download and extract the binary for Windows AMD64
@@ -123,7 +123,7 @@ jobs:
             Expand-Archive -Path "pgm.zip" -DestinationPath "."
             # Add pgm.exe to your PATH or move it to a directory in your PATH
             ```
-            
+
             ### From source
             ```bash
             go install github.com/quadgod/pgm/cmd/pgm@${{ steps.tag.outputs.tag }}
